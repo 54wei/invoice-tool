@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>发票助手 · 一键提取发票信息</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #F5F2ED;
+    --surface: #FDFCFA;
+    --surface2: #F0EDE8;
+    --ink: #1A1814;
+    --ink2: #6B6660;
+    --ink3: #A09B96;
+    --accent: #C8460A;
+    --accent-light: #FAF0EB;
+    --accent-mid: #E8916A;
+    --border: rgba(26,24,20,0.10);
+    --border2: rgba(26,24,20,0.18);
+    --green: #2A6B3C;
+    --green-bg: #EAF4EE;
+    --red: #A32D2D;
+    --red-bg: #FCF0F0;
+    --radius: 16px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 12px rgba(26,24,20,0.07);
+    --shadow-lg: 0 8px 40px rgba(26,24,20,0.12);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Space Grotesk', 'Noto Sans SC', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  header {
+    width: 100%;
+    padding: 2rem 2rem 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .logo-mark {
+    width: 52px; height: 52px;
+    background: var(--accent);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1.25rem;
+  }
+  .logo-mark svg { width: 28px; height: 28px; }
+
+  header h1 {
+    font-size: clamp(1.6rem, 4vw, 2.4rem);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    color: var(--ink);
+  }
+  header p {
+    margin-top: 0.6rem;
+    font-size: 0.95rem;
+    color: var(--ink2);
+    font-weight: 300;
+    max-width: 420px;
+    line-height: 1.7;
+  }
+
+  .tag-row {
+    display: flex; gap: 8px; margin-top: 1rem; flex-wrap: wrap; justify-content: center;
+  }
+  .tag {
+    font-size: 0.72rem; font-weight: 500;
+    padding: 3px 10px; border-radius: 20px;
+    background: var(--surface2); color: var(--ink2);
+    border: 0.5px solid var(--border2);
+    letter-spacing: 0.02em;
+  }
+  .tag.accent { background: var(--accent-light); color: var(--accent); border-color: var(--accent-mid); }
+
+  main {
+    width: 100%; max-width: 700px;
+    padding: 2rem 1.5rem 4rem;
+    display: flex; flex-direction: column; gap: 1.25rem;
+  }
+
+  .drop-zone {
+    background: var(--surface);
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius);
+    padding: 2.5rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--accent-light);
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+  }
+
+  .drop-icon {
+    width: 48px; height: 48px;
+    background: var(--surface2);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    transition: background 0.2s;
+  }
+  .drop-zone:hover .drop-icon, .drop-zone.drag-over .drop-icon {
+    background: var(--accent-light);
+  }
+  .drop-icon svg { width: 22px; height: 22px; color: var(--ink2); }
+
+  .drop-zone h2 {
+    font-size: 1rem; font-weight: 500; color: var(--ink); margin-bottom: 0.35rem;
+  }
+  .drop-zone p { font-size: 0.82rem; color: var(--ink3); }
+  .drop-zone .file-types {
+    display: flex; gap: 6px; justify-content: center; margin-top: 0.9rem; flex-wrap: wrap;
+  }
+  .ft-badge {
+    font-size: 0.7rem; font-weight: 500;
+    padding: 2px 8px; border-radius: 4px;
+    background: var(--surface2); color: var(--ink2);
+    border: 0.5px solid var(--border);
+    font-family: 'Space Grotesk', monospace;
+  }
+
+  .file-list {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .file-item {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex; align-items: center; gap: 10px;
+    font-size: 0.85rem;
+  }
+  .file-item .fi-icon {
+    width: 32px; height: 32px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.65rem; font-weight: 700; letter-spacing: 0.03em;
+  }
+  .fi-pdf { background: #FDECEA; color: #C0392B; }
+  .fi-zip { background: #EDF3FE; color: #1A5BB8; }
+  .file-item .fi-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+  .file-item .fi-size { color: var(--ink3); font-size: 0.75rem; flex-shrink: 0; }
+  .file-item .fi-remove {
+    width: 22px; height: 22px; border-radius: 50%;
+    border: none; background: none; cursor: pointer;
+    color: var(--ink3); display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; padding: 0; font-size: 14px; line-height: 1;
+  }
+  .file-item .fi-remove:hover { background: var(--surface2); color: var(--ink); }
+
+  .process-btn {
+    width: 100%; padding: 14px;
+    background: var(--accent);
+    color: white;
+    border: none; border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 0.95rem; font-weight: 500;
+    cursor: pointer; letter-spacing: 0.01em;
+    transition: opacity 0.2s, transform 0.15s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .process-btn:hover { opacity: 0.88; }
+  .process-btn:active { transform: scale(0.99); }
+  .process-btn:disabled { opacity: 0.45; cursor: default; }
+
+  .progress-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.25rem 1.5rem;
+    display: none;
+  }
+  .progress-card.visible { display: block; }
+  .prog-label { font-size: 0.82rem; color: var(--ink2); margin-bottom: 8px; }
+  .prog-bar-bg {
+    height: 4px; background: var(--surface2); border-radius: 2px; overflow: hidden;
+  }
+  .prog-bar-fill {
+    height: 100%; background: var(--accent); border-radius: 2px;
+    transition: width 0.3s ease; width: 0%;
+  }
+  .prog-detail { font-size: 0.75rem; color: var(--ink3); margin-top: 6px; }
+
+  .results-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    display: none;
+  }
+  .results-card.visible { display: block; }
+
+  .results-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 0.5px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .results-header .rh-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: var(--green-bg); color: var(--green);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .results-header .rh-text h3 { font-size: 0.9rem; font-weight: 500; }
+  .results-header .rh-text p { font-size: 0.75rem; color: var(--ink2); }
+  .results-header .rh-action { margin-left: auto; }
+
+  .dl-btn {
+    padding: 8px 16px;
+    background: var(--ink);
+    color: white;
+    border: none; border-radius: var(--radius-sm);
+    font-family: inherit; font-size: 0.8rem; font-weight: 500;
+    cursor: pointer; letter-spacing: 0.01em;
+    transition: opacity 0.15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .dl-btn:hover { opacity: 0.8; }
+
+  .results-stats {
+    padding: 1rem 1.5rem;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .stat-box {
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    text-align: center;
+  }
+  .stat-box .sv { font-size: 1.4rem; font-weight: 600; color: var(--ink); }
+  .stat-box .sl { font-size: 0.7rem; color: var(--ink2); margin-top: 2px; }
+
+  .results-preview {
+    overflow-x: auto;
+    max-height: 320px;
+    overflow-y: auto;
+  }
+  table {
+    width: 100%; border-collapse: collapse; font-size: 0.78rem;
+    min-width: 600px;
+  }
+  thead tr { background: var(--surface2); position: sticky; top: 0; z-index: 1; }
+  thead th {
+    padding: 8px 12px; text-align: left;
+    font-weight: 500; color: var(--ink2);
+    border-bottom: 0.5px solid var(--border);
+    white-space: nowrap;
+  }
+  tbody tr { border-bottom: 0.5px solid var(--border); transition: background 0.1s; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 8px 12px; color: var(--ink); white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+  tbody td.none-val { color: var(--ink3); font-style: italic; }
+  .badge-r { background: #EAF0FD; color: #1A5BB8; padding: 1px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 500; }
+  .badge-u { background: #EDF8F0; color: #1E7A3E; padding: 1px 6px; border-radius: 4px; font-size: 0.68rem; font-weight: 500; }
+
+  .error-card {
+    background: var(--red-bg);
+    border: 0.5px solid rgba(163,45,45,0.2);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    font-size: 0.83rem;
+    color: var(--red);
+    display: none;
+  }
+  .error-card.visible { display: block; }
+
+  footer {
+    padding: 2rem;
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--ink3);
+  }
+  footer a { color: var(--ink2); text-decoration: none; }
+
+  .spin {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid rgba(255,255,255,0.35);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .empty-state {
+    text-align: center; padding: 2rem 1rem; color: var(--ink3); font-size: 0.83rem;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">
+    <svg viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="4" y="3" width="14" height="18" rx="2" fill="rgba(255,255,255,0.25)" stroke="white" stroke-width="1.5"/>
+      <rect x="10" y="7" width="10" height="14" rx="2" fill="rgba(255,255,255,0.15)" stroke="white" stroke-width="1.5"/>
+      <line x1="7" y1="11" x2="12" y2="11" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+      <line x1="7" y1="14" x2="12" y2="14" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+      <line x1="13" y1="11" x2="17.5" y2="11" stroke="rgba(255,255,255,0.6)" stroke-width="1.3" stroke-linecap="round"/>
+      <line x1="13" y1="14" x2="17.5" y2="14" stroke="rgba(255,255,255,0.6)" stroke-width="1.3" stroke-linecap="round"/>
+    </svg>
+  </div>
+  <h1>发票信息提取助手</h1>
+  <p>上传发票 PDF 或 ZIP 压缩包，自动识别并整理为 Excel 可读的 CSV 表格</p>
+  <div class="tag-row">
+    <span class="tag accent">人民币发票</span>
+    <span class="tag accent">美元发票</span>
+    <span class="tag">全电发票 20位</span>
+    <span class="tag">传统发票 8位</span>
+    <span class="tag">批量处理</span>
+    <span class="tag">本地运行 · 不上传服务器</span>
+  </div>
+</header>
+
+<main>
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" multiple accept=".pdf,.zip" />
+    <div class="drop-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+    </div>
+    <h2>点击上传或拖拽文件到此处</h2>
+    <p>支持同时上传多个文件，也可上传 ZIP 压缩包</p>
+    <div class="file-types">
+      <span class="ft-badge">PDF</span>
+      <span class="ft-badge">ZIP</span>
+    </div>
+  </div>
+
+  <div class="file-list" id="fileList"></div>
+
+  <div class="error-card" id="errorCard"></div>
+
+  <button class="process-btn" id="processBtn" disabled>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+    </svg>
+    开始提取发票信息
+  </button>
+
+  <div class="progress-card" id="progressCard">
+    <div class="prog-label" id="progLabel">正在处理…</div>
+    <div class="prog-bar-bg"><div class="prog-bar-fill" id="progBar"></div></div>
+    <div class="prog-detail" id="progDetail"></div>
+  </div>
+
+  <div class="results-card" id="resultsCard">
+    <div class="results-header">
+      <div class="rh-icon">✓</div>
+      <div class="rh-text">
+        <h3>提取完成</h3>
+        <p id="resultsSubtitle">共处理 0 个文件</p>
+      </div>
+      <div class="rh-action">
+        <button class="dl-btn" id="downloadBtn">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          下载 CSV
+        </button>
+      </div>
+    </div>
+    <div class="results-stats">
+      <div class="stat-box"><div class="sv" id="statTotal">0</div><div class="sl">总发票数</div></div>
+      <div class="stat-box"><div class="sv" id="statRMB">0</div><div class="sl">人民币发票</div></div>
+      <div class="stat-box"><div class="sv" id="statUSD">0</div><div class="sl">美元发票</div></div>
+    </div>
+    <div class="results-preview">
+      <table>
+        <thead>
+          <tr>
+            <th>客户名称</th>
+            <th>金额</th>
+            <th>类型</th>
+            <th>发票金额</th>
+            <th>发票号码</th>
+            <th>发票日期</th>
+          </tr>
+        </thead>
+        <tbody id="previewTbody">
+          <tr><td colspan="6"><div class="empty-state">暂无数据</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</main>
+
+<footer>
+  所有文件均在您的浏览器本地处理，不会上传到任何服务器 &nbsp;·&nbsp; 数据安全有保障
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+let collectedFiles = []; // {name, arrayBuffer}
+let extractedRows = [];
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const fileList = document.getElementById('fileList');
+const processBtn = document.getElementById('processBtn');
+const progressCard = document.getElementById('progressCard');
+const resultsCard = document.getElementById('resultsCard');
+const errorCard = document.getElementById('errorCard');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('drag-over');
+  handleFileObjects(Array.from(e.dataTransfer.files));
+});
+fileInput.addEventListener('change', () => { handleFileObjects(Array.from(fileInput.files)); fileInput.value = ''; });
+
+function handleFileObjects(files) {
+  files.forEach(f => {
+    if (!f.name.match(/\.(pdf|zip)$/i)) return;
+    const reader = new FileReader();
+    reader.onload = evt => {
+      collectedFiles.push({ name: f.name, size: f.size, arrayBuffer: evt.target.result });
+      renderFileList();
+    };
+    reader.readAsArrayBuffer(f);
+  });
+}
+
+function renderFileList() {
+  fileList.innerHTML = '';
+  collectedFiles.forEach((f, i) => {
+    const isPdf = f.name.toLowerCase().endsWith('.pdf');
+    const div = document.createElement('div');
+    div.className = 'file-item';
+    div.innerHTML = `
+      <div class="fi-icon ${isPdf ? 'fi-pdf' : 'fi-zip'}">${isPdf ? 'PDF' : 'ZIP'}</div>
+      <span class="fi-name">${f.name}</span>
+      <span class="fi-size">${formatSize(f.size)}</span>
+      <button class="fi-remove" title="移除" onclick="removeFile(${i})">✕</button>
+    `;
+    fileList.appendChild(div);
+  });
+  processBtn.disabled = collectedFiles.length === 0;
+}
+
+function removeFile(i) { collectedFiles.splice(i, 1); renderFileList(); }
+function formatSize(b) { return b > 1048576 ? (b/1048576).toFixed(1)+' MB' : (b/1024).toFixed(0)+' KB'; }
+
+processBtn.addEventListener('click', async () => {
+  if (collectedFiles.length === 0) return;
+  errorCard.classList.remove('visible');
+  resultsCard.classList.remove('visible');
+  progressCard.classList.add('visible');
+  processBtn.disabled = true;
+  processBtn.innerHTML = '<span class="spin"></span> 正在处理…';
+
+  try {
+    // Collect all PDF arraybuffers (expand zips)
+    let pdfs = []; 
+    for (const f of collectedFiles) {
+      if (f.name.toLowerCase().endsWith('.pdf')) {
+        pdfs.push({ name: f.name, buffer: f.arrayBuffer });
+      } else if (f.name.toLowerCase().endsWith('.zip')) {
+        setProgress(0, `正在解压 ${f.name}…`, '');
+        const zip = await JSZip.loadAsync(f.arrayBuffer);
+        for (const [path, entry] of Object.entries(zip.files)) {
+          if (!entry.dir && path.toLowerCase().endsWith('.pdf')) {
+            const buf = await entry.async('arraybuffer');
+            pdfs.push({ name: path.split('/').pop(), buffer: buf });
+          }
+        }
+      }
+    }
+
+    if (pdfs.length === 0) { showError('未在上传的文件中找到任何 PDF 发票文件，请检查后重试。'); return; }
+
+    extractedRows = [];
+    for (let i = 0; i < pdfs.length; i++) {
+      const pct = Math.round((i / pdfs.length) * 100);
+      setProgress(pct, `正在识别 (${i+1}/${pdfs.length})…`, pdfs[i].name);
+      const text = await extractPdfText(pdfs[i].buffer);
+      const info = parseInvoiceText(text, pdfs[i].name);
+      extractedRows.push(info);
+    }
+    setProgress(100, '处理完成！', '');
+    showResults(pdfs.length);
+  } catch(e) {
+    showError('处理过程中出现错误：' + e.message);
+  } finally {
+    processBtn.disabled = false;
+    processBtn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> 重新提取`;
+  }
+});
+
+function setProgress(pct, label, detail) {
+  document.getElementById('progBar').style.width = pct + '%';
+  document.getElementById('progLabel').textContent = label;
+  document.getElementById('progDetail').textContent = detail;
+}
+
+async function extractPdfText(buffer) {
+  const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+  let text = '';
+  for (let p = 1; p <= pdf.numPages; p++) {
+    const page = await pdf.getPage(p);
+    const content = await page.getTextContent();
+    text += content.items.map(i => i.str).join(' ') + '\n';
+  }
+  return text;
+}
+
+function parseInvoiceText(text, filename) {
+  // 删除了“空列”与“给易会计”，新增了“备注1、备注2、备注3”
+  const info = {
+    客户名称: 'none', 金额: 'none', 金额类型: 'R', 发票金额: 'none',
+    发票号码: 'none', 发票日期: 'none', 付款时间: 'none',
+    业务编号: 'none', 销账情况: 'none', 
+    备注1: 'none', 备注2: 'none', 备注3: 'none',
+    _filename: filename
+  };
+
+  let isInvoice = false;
+
+  // 发票号码：20位全电 or 8位传统
+  let m = text.match(/(?<!\d)(\d{20})(?!\d)/);
+  if (!m) m = text.match(/(?<!\d)(\d{8})(?!\d)/);
+  if (m) { isInvoice = true; info.发票号码 = m[1]; }
+
+  // 发票日期
+  const dm = text.match(/(\d{4})\s*年\s*0?(\d{1,2})\s*月\s*0?(\d{1,2})\s*日/);
+  if (dm) { isInvoice = true; info.发票日期 = `${dm[1]}.${dm[2]}.${dm[3]}`; }
+
+  // 美元 or 人民币
+  const usdM = text.match(/美金[：:]\s*([\d,]+\.?\d*)/);
+  if (usdM) {
+    isInvoice = true;
+    info.金额类型 = 'U';
+    info.金额 = parseFloat(usdM[1].replace(/,/g,'')).toFixed(2);
+    const rmbA = [...text.matchAll(/[¥￥]\s*([\d,]+\.\d{2})/g)].map(x => parseFloat(x[1].replace(/,/g,'')));
+    if (rmbA.length) info.发票金额 = Math.max(...rmbA).toFixed(2);
+  } else {
+    info.金额类型 = 'R';
+    const rmbA = [...text.matchAll(/[¥￥]\s*([\d,]+\.\d{2})/g)].map(x => parseFloat(x[1].replace(/,/g,'')));
+    if (rmbA.length) {
+      isInvoice = true;
+      const max = Math.max(...rmbA).toFixed(2);
+      info.发票金额 = max;
+      info.金额 = max;
+    }
+  }
+
+  // 客户名称
+  const entities = [];
+  const ep = /[\u4e00-\u9fa5A-Za-z0-9（）()]+(?:公司|厂|大学|中心|企业)/g;
+  let em;
+  while ((em = ep.exec(text)) !== null) {
+    if (!entities.includes(em[0])) entities.push(em[0]);
+  }
+  if (entities.length >= 2) info.客户名称 = entities[1];
+  else if (entities.length === 1) info.客户名称 = entities[0];
+
+  // ================= 提取银行及备注信息的逻辑 =================
+  // 按照换行符或连续超过4个空格将文本进行分段
+  const segments = text.split(/\n|\s{4,}/); 
+  let bankInfos = [];
+  
+  for(let seg of segments) {
+    seg = seg.trim();
+    if (!seg) continue;
+    
+    // 过滤掉只有独立标题等无效的干扰内容行
+    if (/^(?:开户银行及账号|开户银行及帐号|开户行及账号|购买方|销售方|收款方|机器编号|开户行)[:：]?$/.test(seg)) continue;
+    if (seg.includes('密码区') || seg.includes('机器编号')) continue;
+
+    // 只要这段文本包含任何发票上表示“银行”的字眼，就视为我们要提取的银行信息记录
+    if (/(银行|支行|分行|营业部|信用社|开户行)/.test(seg)) {
+       // 去除前缀的 "备 注" 或 "备注" 字样，保持内容整洁
+       let cleanSeg = seg.replace(/^(?:备\s*注|注)[:：]?\s*/, '').trim();
+       if(cleanSeg.length > 4) {
+           bankInfos.push(cleanSeg);
+       }
+    }
+  }
+  
+  // 对提取到的相似银行信息进行去重
+  bankInfos = [...new Set(bankInfos)]; 
+
+  // 将提取到的信息分配入字段 (前两项进入备注1、备注2，余下合并进备注3)
+  if (bankInfos.length > 0) info.备注1 = bankInfos[0];
+  if (bankInfos.length > 1) info.备注2 = bankInfos[1];
+  if (bankInfos.length > 2) info.备注3 = bankInfos.slice(2).join(' | ');
+  // ==========================================================
+
+  if (!isInvoice) return { ...Object.fromEntries(Object.keys(info).map(k => [k,'none'])), _filename: filename, _isInvoice: false };
+  return { ...info, _isInvoice: true };
+}
+
+function showResults(total) {
+  const invoices = extractedRows.filter(r => r._isInvoice);
+  const rmb = invoices.filter(r => r.金额类型 === 'R').length;
+  const usd = invoices.filter(r => r.金额类型 === 'U').length;
+
+  document.getElementById('resultsSubtitle').textContent = `共处理 ${total} 个 PDF，识别到 ${invoices.length} 张发票`;
+  document.getElementById('statTotal').textContent = invoices.length;
+  document.getElementById('statRMB').textContent = rmb;
+  document.getElementById('statUSD').textContent = usd;
+
+  const tbody = document.getElementById('previewTbody');
+  if (invoices.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state">未识别到发票信息，请确认上传的是发票 PDF</div></td></tr>';
+  } else {
+    tbody.innerHTML = invoices.map(r => `
+      <tr>
+        <td ${r.客户名称==='none'?'class="none-val"':''}>${r.客户名称}</td>
+        <td ${r.金额==='none'?'class="none-val"':''}>${r.金额}</td>
+        <td><span class="${r.金额类型==='U'?'badge-u':'badge-r'}">${r.金额类型==='U'?'USD':'RMB'}</span></td>
+        <td ${r.发票金额==='none'?'class="none-val"':''}>${r.发票金额}</td>
+        <td style="font-family:monospace;font-size:0.73rem">${r.发票号码}</td>
+        <td ${r.发票日期==='none'?'class="none-val"':''}>${r.发票日期}</td>
+      </tr>
+    `).join('');
+  }
+
+  resultsCard.classList.add('visible');
+  resultsCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.getElementById('downloadBtn').addEventListener('click', () => {
+  if (!extractedRows.length) return;
+  // 更新了导出的表头列表
+  const header = ['客户名称','金额','金额类型','发票金额','发票号码','发票日期','付款时间','业务编号','销账情况','备注1','备注2','备注3'];
+  const rows = extractedRows.map(r => header.map(k => `"${(r[k]||'none').toString().replace(/"/g,'""')}"`).join(','));
+  const csv = '\uFEFF' + header.map(h=>`"${h}"`).join(',') + '\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const d = new Date();
+  a.download = `发票汇总_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.csv`;
+  a.click(); URL.revokeObjectURL(url);
+});
+
+function showError(msg) {
+  errorCard.textContent = '⚠ ' + msg;
+  errorCard.classList.add('visible');
+  progressCard.classList.remove('visible');
+}
+</script>
+</body>
+</html>
